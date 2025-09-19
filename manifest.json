@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "SaveMyExams Revision Notes Hack",
+  "name": "SaveMyExams Unlocker",
   "version": "1.0",
-  "description": "Removes paywalls and blur from SaveMyExams revision notes",
+  "description": "Unlocks paywalled content on SaveMyExams",
   
   "content_scripts": [
     {
@@ -11,7 +11,8 @@
         "*://savemyexams.com/*"
       ],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "all_frames": true
     }
   ],
   
