@@ -1,97 +1,152 @@
+// Android-compatible paywall remover
 function removeBlurAndLimitWall() {
   try {
-    // Removing blur and limit wall sign up for notes
+    console.log('📱 Android: Removing paywalls...');
+    
+    // 1. Remove blur from notes
     const notesBlur = document.querySelector('div.Wrapper_wrapper__GnBU0.mb-4.revision-notes_blur__iugNW');
     if (notesBlur) {
       notesBlur.classList.remove('revision-notes_blur__iugNW');
       console.log('✅ Removed notes blur');
     }
 
-    const limitWallNotes = document.querySelector('div.LimitWall_signUpWrapper__num4B');
-    if (limitWallNotes) {
-      limitWallNotes.remove();
-      console.log('✅ Removed notes limit wall');
-    }
+    // 2. Remove sign-up walls
+    const limitWalls = document.querySelectorAll('div.LimitWall_signUpWrapper__num4B, div.limit-wall_wrapper__8cuMy');
+    limitWalls.forEach(wall => {
+      wall.remove();
+      console.log('✅ Removed limit wall');
+    });
 
-    // Removing blur and limit wall sign up for questions
+    // 3. Remove question blur
     const questionsBlur = document.querySelector('div.Blur_blur__Q5tMa');
     if (questionsBlur) {
       questionsBlur.classList.remove('Blur_blur__Q5tMa');
       console.log('✅ Removed questions blur');
     }
 
-    const limitWallQuestions = document.querySelector('div.limit-wall_wrapper__8cuMy');
-    if (limitWallQuestions) {
-      limitWallQuestions.remove();
-      console.log('✅ Removed questions limit wall');
-    }
-
-    // Mobile-specific: Remove any mobile paywalls or overlays
-    if (window.innerWidth <= 768) {
-      const mobileOverlays = document.querySelectorAll('div[class*="mobile"], div[class*="Mobile"], div[class*="Overlay"]');
-      mobileOverlays.forEach(element => {
-        if (element.textContent.includes('sign up') || element.textContent.includes('premium') || element.textContent.includes('limit')) {
+    // 4. Android-specific: Remove mobile overlays and popups
+    if (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      // Remove mobile-specific paywalls
+      const mobileWalls = document.querySelectorAll('div[class*="mobile"], div[class*="Mobile"], div[class*="popup"], div[class*="modal"]');
+      mobileWalls.forEach(element => {
+        if (element.textContent.match(/sign up|premium|limit|subscribe|upgrade/i)) {
           element.remove();
           console.log('✅ Removed mobile overlay');
         }
       });
+      
+      // Enable scrolling (often disabled on mobile paywalls)
+      document.body.style.overflow = 'auto';
+      document.documentElement.style.overflow = 'auto';
+      document.body.style.position = 'static';
     }
+
+    // 5. Remove any iframe paywalls
+    const paywallIframes = document.querySelectorAll('iframe[src*="paywall"], iframe[src*="limit"]');
+    paywallIframes.forEach(iframe => {
+      iframe.remove();
+      console.log('✅ Removed paywall iframe');
+    });
 
   } catch (error) {
     console.error('Error removing elements:', error);
   }
 }
 
-// Handle dynamic content with better performance
-function observeAndRemoveElements() {
-  removeBlurAndLimitWall();
-
-  // Set up observer for dynamically loaded content (throttled for performance)
-  const observer = new MutationObserver(function (mutations) {
-    // Only run if relevant nodes were added
-    const hasRelevantChanges = mutations.some(mutation =>
-      mutation.addedNodes.length > 0 &&
-      Array.from(mutation.addedNodes).some(node =>
-        node.nodeType === 1 && // Element node
-        (node.classList?.contains('revision-notes_blur__iugNW') ||
-          node.classList?.contains('LimitWall_signUpWrapper__num4B') ||
-          node.classList?.contains('Blur_blur__Q5tMa') ||
-          node.classList?.contains('limit-wall_wrapper__8cuMy') ||
-          node.querySelector('[class*="blur"], [class*="Blur"], [class*="LimitWall"]'))
-      )
-    );
-
-    if (hasRelevantChanges) {
-      // Debounce to avoid multiple rapid executions
-      clearTimeout(window.savemyexamsDebounce);
-      window.savemyexamsDebounce = setTimeout(removeBlurAndLimitWall, 150);
+// Android-optimized mutation observer
+function setupMutationObserver() {
+  const observer = new MutationObserver(function(mutations) {
+    let shouldRun = false;
+    
+    mutations.forEach(function(mutation) {
+      if (mutation.addedNodes.length > 0) {
+        // Check if added nodes contain paywall elements
+        Array.from(mutation.addedNodes).forEach(node => {
+          if (node.nodeType === 1) { // Element node
+            if (node.classList?.contains('revision-notes_blur__iugNW') ||
+                node.classList?.contains('LimitWall_signUpWrapper__num4B') ||
+                node.classList?.contains('Blur_blur__Q5tMa') ||
+                node.classList?.contains('limit-wall_wrapper__8cuMy') ||
+                node.querySelector('[class*="blur"], [class*="Blur"], [class*="LimitWall"]')) {
+              shouldRun = true;
+            }
+          }
+        });
+      }
+    });
+    
+    if (shouldRun) {
+      // Use requestAnimationFrame for better Android performance
+      requestAnimationFrame(() => {
+        removeBlurAndLimitWall();
+      });
     }
   });
 
-  // Start observing with optimized settings
+  // Start observing with Android-optimized settings
   observer.observe(document.documentElement, {
     childList: true,
-    subtree: true,
-    attributes: false,
-    characterData: false
+    subtree: true
   });
+  
+  return observer;
 }
 
-// Initialize with mobile compatibility
+// Android-compatible initialization
 function init() {
-  // Wait a bit longer for mobile pages to fully load
-  const isMobile = window.innerWidth <= 768;
-  const delay = isMobile ? 1000 : 100;
-
-  setTimeout(observeAndRemoveElements, delay);
+  console.log('📱 SaveMyExams Hack: Initializing on Android...');
+  
+  // Initial cleanup
+  removeBlurAndLimitWall();
+  
+  // Set up mutation observer for dynamic content
+  setupMutationObserver();
+  
+  // Additional cleanup after a short delay (for SPAs)
+  setTimeout(removeBlurAndLimitWall, 2000);
+  
+  // Continuous cleanup for single-page apps
+  setInterval(removeBlurAndLimitWall, 5000);
 }
 
-// Start when DOM is ready or page is loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+// Android-compatible event listeners
+function setupEventListeners() {
+  // DOMContentLoaded (for initial load)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  
+  // Listen for history changes (SPA navigation)
+  let lastUrl = location.href;
+  new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+      lastUrl = url;
+      setTimeout(init, 1000);
+    }
+  }).observe(document, { subtree: true, childList: true });
+  
+  // Listen for pushState/replaceState (SPA navigation)
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+  
+  history.pushState = function() {
+    originalPushState.apply(this, arguments);
+    setTimeout(init, 500);
+  };
+  
+  history.replaceState = function() {
+    originalReplaceState.apply(this, arguments);
+    setTimeout(init, 500);
+  };
 }
 
-// Also listen for page transitions (common in mobile SPAs)
-window.addEventListener('load', init);
+// Start everything
+setupEventListeners();
+
+// Export for potential external use (if needed)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { removeBlurAndLimitWall, init };
+}
